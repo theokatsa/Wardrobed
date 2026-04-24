@@ -17,7 +17,32 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
 
-async function imageUrlToBase64(url) {
+function firstImageUrl(value) {
+  if (!value) return null;
+
+  if (Array.isArray(value)) {
+    return firstImageUrl(value[0]);
+  }
+
+  if (typeof value === "string") {
+    return (
+      value
+        .split(",")
+        .map((item) => item.trim())
+        .find((item) => item.startsWith("http")) || null
+    );
+  }
+
+  if (typeof value === "object") {
+    return value.url || value.src || value.image || null;
+  }
+
+  return null;
+}
+
+async function imageUrlToBase64(value) {
+  const url = firstImageUrl(value);
+
   if (!url) return null;
 
   const response = await fetch(url);
@@ -68,6 +93,22 @@ app.post("/generate-outfit", async (req, res) => {
       imageUrlToBase64(accessoriesImage),
     ]);
 
+    const validImages = images.filter(Boolean);
+
+    if (!validImages.length) {
+      return res.status(400).json({
+        error: "No valid image URLs were provided",
+        received: {
+          modelPhoto,
+          topImage,
+          bottomImage,
+          shoesImage,
+          outerwearImage,
+          accessoriesImage,
+        },
+      });
+    }
+
     const parts = [
       {
         text: `
@@ -83,7 +124,7 @@ Do not add extra clothing items.
 Return only the final generated image.
         `.trim(),
       },
-      ...images.filter(Boolean).map((image) => ({
+      ...validImages.map((image) => ({
         inline_data: image,
       })),
     ];
@@ -95,11 +136,7 @@ Return only the final generated image.
         "x-goog-api-key": GEMINI_API_KEY,
       },
       body: JSON.stringify({
-        contents: [
-          {
-            parts,
-          },
-        ],
+        contents: [{ parts }],
       }),
     });
 
@@ -143,7 +180,7 @@ Return only the final generated image.
       outfitImage: upload.secure_url,
       status: "success",
     });
-  }  catch (err) {
+  } catch (err) {
     console.error("GENERATE OUTFIT ERROR:", err);
 
     return res.status(500).json({
