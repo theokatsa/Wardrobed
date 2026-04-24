@@ -80,17 +80,16 @@ app.post("/generate-outfit", async (req, res) => {
     console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
     debugLog("REQUEST BODY", req.body);
 
-    const {
-      rowId,
-      outfitName,
-      topImage,
-      bottomImage,
-      shoesImage,
-      outerwearImage,
-      accessoriesImage,
-      modelPhoto,
-      ownerEmail,
-    } = req.body;
+    const rowId = req.body.rowId || req.body["Row ID"];
+const outfitName = req.body.outfitName || req.body.OutfitName;
+const topImage = req.body.topImage || req.body.TopImage;
+const bottomImage = req.body.bottomImage || req.body.BottomImage;
+const shoesImage = req.body.shoesImage || req.body.ShoesImage;
+const outerwearImage = req.body.outerwearImage || req.body.OuterwearImage;
+const accessoriesImage =
+  req.body.accessoriesImage || req.body.AccessoriesImage;
+const modelPhoto = req.body.modelPhoto || req.body["Model Photo"];
+const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
 
     debugLog("ENV CHECK", {
       hasGeminiKey: Boolean(GEMINI_API_KEY),
