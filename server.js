@@ -143,9 +143,12 @@ Return only the final generated image.
       outfitImage: upload.secure_url,
       status: "success",
     });
-  } catch (error) {
+  }  catch (err) {
+    console.error("GENERATE OUTFIT ERROR:", err);
+
     return res.status(500).json({
-      error: error.message,
+      error: err.message,
+      stack: err.stack,
     });
   }
 });
