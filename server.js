@@ -17,6 +17,11 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_ENDPOINT =
   "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
 
+function debugLog(label, value) {
+  console.log(`\n========== ${label} ==========`);
+  console.log(JSON.stringify(value, null, 2));
+}
+
 function firstImageUrl(value) {
   if (!value) return null;
 
@@ -34,21 +39,27 @@ function firstImageUrl(value) {
   }
 
   if (typeof value === "object") {
-    return value.url || value.src || value.image || null;
+    return value.url || value.src || value.image || value.secure_url || null;
   }
 
   return null;
 }
 
-async function imageUrlToBase64(value) {
+async function imageUrlToBase64(label, value) {
   const url = firstImageUrl(value);
+
+  console.log(`${label} raw value:`, value);
+  console.log(`${label} extracted URL:`, url);
 
   if (!url) return null;
 
   const response = await fetch(url);
 
+  console.log(`${label} fetch status:`, response.status);
+  console.log(`${label} content-type:`, response.headers.get("content-type"));
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch image: ${url}`);
+    throw new Error(`${label}: Failed to fetch image: ${url}`);
   }
 
   const contentType = response.headers.get("content-type") || "image/png";
@@ -66,6 +77,9 @@ app.get("/", (req, res) => {
 
 app.post("/generate-outfit", async (req, res) => {
   try {
+    console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
+    debugLog("REQUEST BODY", req.body);
+
     const {
       rowId,
       outfitName,
@@ -78,26 +92,51 @@ app.post("/generate-outfit", async (req, res) => {
       ownerEmail,
     } = req.body;
 
+    debugLog("ENV CHECK", {
+      hasGeminiKey: Boolean(GEMINI_API_KEY),
+      hasCloudinaryCloudName: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
+      hasCloudinaryApiKey: Boolean(process.env.CLOUDINARY_API_KEY),
+      hasCloudinaryApiSecret: Boolean(process.env.CLOUDINARY_API_SECRET),
+    });
+
     if (!GEMINI_API_KEY) {
+      console.error("Missing GEMINI_API_KEY");
+
       return res.status(500).json({
         error: "Missing GEMINI_API_KEY",
       });
     }
 
+    const extractedUrls = {
+      modelPhoto: firstImageUrl(modelPhoto),
+      topImage: firstImageUrl(topImage),
+      bottomImage: firstImageUrl(bottomImage),
+      shoesImage: firstImageUrl(shoesImage),
+      outerwearImage: firstImageUrl(outerwearImage),
+      accessoriesImage: firstImageUrl(accessoriesImage),
+    };
+
+    debugLog("EXTRACTED IMAGE URLS", extractedUrls);
+
     const images = await Promise.all([
-      imageUrlToBase64(modelPhoto),
-      imageUrlToBase64(topImage),
-      imageUrlToBase64(bottomImage),
-      imageUrlToBase64(shoesImage),
-      imageUrlToBase64(outerwearImage),
-      imageUrlToBase64(accessoriesImage),
+      imageUrlToBase64("modelPhoto", modelPhoto),
+      imageUrlToBase64("topImage", topImage),
+      imageUrlToBase64("bottomImage", bottomImage),
+      imageUrlToBase64("shoesImage", shoesImage),
+      imageUrlToBase64("outerwearImage", outerwearImage),
+      imageUrlToBase64("accessoriesImage", accessoriesImage),
     ]);
 
     const validImages = images.filter(Boolean);
 
+    console.log("Valid image count:", validImages.length);
+
     if (!validImages.length) {
+      console.error("No valid image URLs were provided");
+
       return res.status(400).json({
         error: "No valid image URLs were provided",
+        extractedUrls,
         received: {
           modelPhoto,
           topImage,
@@ -129,6 +168,8 @@ Return only the final generated image.
       })),
     ];
 
+    console.log("Calling Gemini...");
+
     const geminiResponse = await fetch(GEMINI_ENDPOINT, {
       method: "POST",
       headers: {
@@ -142,9 +183,13 @@ Return only the final generated image.
 
     const geminiData = await geminiResponse.json();
 
+    console.log("Gemini status:", geminiResponse.status);
+    debugLog("GEMINI RESPONSE", geminiData);
+
     if (!geminiResponse.ok) {
       return res.status(geminiResponse.status).json({
         error: "Gemini API failed",
+        status: geminiResponse.status,
         details: geminiData,
       });
     }
@@ -154,6 +199,8 @@ Return only the final generated image.
     );
 
     if (!imagePart) {
+      console.error("No generated image returned from Gemini");
+
       return res.status(500).json({
         error: "No generated image returned",
         raw: geminiData,
@@ -162,6 +209,8 @@ Return only the final generated image.
 
     const generatedBase64 = imagePart.inline_data.data;
     const mimeType = imagePart.inline_data.mime_type || "image/png";
+
+    console.log("Uploading to Cloudinary...");
 
     const upload = await cloudinary.uploader.upload(
       `data:${mimeType};base64,${generatedBase64}`,
@@ -172,6 +221,8 @@ Return only the final generated image.
       }
     );
 
+    debugLog("CLOUDINARY UPLOAD", upload);
+
     return res.json({
       rowId,
       outfitName,
@@ -181,7 +232,8 @@ Return only the final generated image.
       status: "success",
     });
   } catch (err) {
-    console.error("GENERATE OUTFIT ERROR:", err);
+    console.error("\n========== GENERATE OUTFIT ERROR ==========");
+    console.error(err);
 
     return res.status(500).json({
       error: err.message,
