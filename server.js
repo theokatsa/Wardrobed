@@ -80,6 +80,7 @@ app.post("/generate-outfit", async (req, res) => {
     console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
     debugLog("REQUEST BODY", req.body);
 
+  
     const rowId = req.body.rowId || req.body["Row ID"];
 const outfitName = req.body.outfitName || req.body.OutfitName;
 const topImage = req.body.topImage || req.body.TopImage;
@@ -176,10 +177,8 @@ Return only the final generated image.
         "x-goog-api-key": GEMINI_API_KEY,
       },
       body: JSON.stringify({
-  contents: [{ parts }],
-  generationConfig: {
-    responseModalities: ["IMAGE"],
-  },
+        contents: [{ parts }],
+      }),
     });
 
     const geminiData = await geminiResponse.json();
@@ -196,23 +195,20 @@ Return only the final generated image.
     }
 
     const imagePart = geminiData.candidates?.[0]?.content?.parts?.find(
-  (part) => part.inline_data?.data || part.inlineData?.data
-);
+      (part) => part.inline_data?.data
+    );
 
-if (!imagePart) {
-  return res.status(500).json({
-    error: "No generated image returned",
-    raw: geminiData,
-  });
-}
+    if (!imagePart) {
+      console.error("No generated image returned from Gemini");
 
-const generatedBase64 =
-  imagePart.inline_data?.data || imagePart.inlineData?.data;
+      return res.status(500).json({
+        error: "No generated image returned",
+        raw: geminiData,
+      });
+    }
 
-const mimeType =
-  imagePart.inline_data?.mime_type ||
-  imagePart.inlineData?.mimeType ||
-  "image/png";
+    const generatedBase64 = imagePart.inline_data.data;
+    const mimeType = imagePart.inline_data.mime_type || "image/png";
 
     console.log("Uploading to Cloudinary...");
 
