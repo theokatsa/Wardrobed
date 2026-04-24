@@ -164,7 +164,10 @@ Return only the final generated image.
         `.trim(),
       },
       ...validImages.map((image) => ({
-        inline_data: image,
+        inlineData: {
+    mimeType: image.mime_type,
+    data: image.data,
+  },
       })),
     ];
 
@@ -195,20 +198,25 @@ Return only the final generated image.
     }
 
     const imagePart = geminiData.candidates?.[0]?.content?.parts?.find(
-      (part) => part.inline_data?.data
-    );
+  (part) => part.inlineData?.data || part.inline_data?.data
+);
 
-    if (!imagePart) {
-      console.error("No generated image returned from Gemini");
+if (!imagePart) {
+  console.error("No generated image returned from Gemini");
 
-      return res.status(500).json({
-        error: "No generated image returned",
-        raw: geminiData,
-      });
-    }
+  return res.status(500).json({
+    error: "No generated image returned",
+    raw: geminiData,
+  });
+}
 
-    const generatedBase64 = imagePart.inline_data.data;
-    const mimeType = imagePart.inline_data.mime_type || "image/png";
+const generatedBase64 =
+  imagePart.inlineData?.data || imagePart.inline_data?.data;
+
+const mimeType =
+  imagePart.inlineData?.mimeType ||
+  imagePart.inline_data?.mime_type ||
+  "image/png";
 
     console.log("Uploading to Cloudinary...");
 
