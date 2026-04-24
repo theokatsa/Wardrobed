@@ -46,7 +46,7 @@ app.post("/generate-outfit", async (req, res) => {
       rowId,
       outfitName,
       ownerEmail,
-      imageUrl: "https://via.placeholder.com/512x512.png?text=Outfit",
+      imageUrl: "https://placehold.co/512x512/png?text=Outfit",
       status: "mock-success",
     });
 
