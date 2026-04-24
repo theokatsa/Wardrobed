@@ -176,8 +176,10 @@ Return only the final generated image.
         "x-goog-api-key": GEMINI_API_KEY,
       },
       body: JSON.stringify({
-        contents: [{ parts }],
-      }),
+  contents: [{ parts }],
+  generationConfig: {
+    responseModalities: ["IMAGE"],
+  },
     });
 
     const geminiData = await geminiResponse.json();
@@ -194,20 +196,23 @@ Return only the final generated image.
     }
 
     const imagePart = geminiData.candidates?.[0]?.content?.parts?.find(
-      (part) => part.inline_data?.data
-    );
+  (part) => part.inline_data?.data || part.inlineData?.data
+);
 
-    if (!imagePart) {
-      console.error("No generated image returned from Gemini");
+if (!imagePart) {
+  return res.status(500).json({
+    error: "No generated image returned",
+    raw: geminiData,
+  });
+}
 
-      return res.status(500).json({
-        error: "No generated image returned",
-        raw: geminiData,
-      });
-    }
+const generatedBase64 =
+  imagePart.inline_data?.data || imagePart.inlineData?.data;
 
-    const generatedBase64 = imagePart.inline_data.data;
-    const mimeType = imagePart.inline_data.mime_type || "image/png";
+const mimeType =
+  imagePart.inline_data?.mime_type ||
+  imagePart.inlineData?.mimeType ||
+  "image/png";
 
     console.log("Uploading to Cloudinary...");
 
