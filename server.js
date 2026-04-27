@@ -15,7 +15,7 @@ cloudinary.config({
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent";
 
 function debugLog(label, value) {
   console.log(`\n========== ${label} ==========`);
