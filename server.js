@@ -15,7 +15,7 @@ cloudinary.config({
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 const GEMINI_ENDPOINT =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent";
+  "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
 
 function debugLog(label, value) {
   console.log(`\n========== ${label} ==========`);
@@ -151,50 +151,7 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     const parts = [
       {
         text: `
-Create a photorealistic full-body fashion try-on image.
-
-INPUT ORDER:
-- Image 1: ModelPhoto (person)
-- Image 2+: Clothing items in this order:
-  TopImage, BottomImage, ShoesImage, OuterwearImage (optional), AccessoriesImage (optional)
-
-STRICT REQUIREMENTS:
-
-IDENTITY (DO NOT CHANGE):
-- Preserve the exact face, facial features, skin tone, hair, and identity from ModelPhoto.
-- Preserve the exact body shape and proportions.
-- Do not beautify, stylize, or modify the person.
-
-CLOTHING APPLICATION:
-- Apply ONLY the provided clothing items.
-- Map each item correctly:
-  TopImage → torso
-  BottomImage → legs
-  ShoesImage → feet
-  OuterwearImage → over top (if present)
-  AccessoriesImage → appropriate placement (if present)
-- Do NOT invent, replace, or hallucinate any clothing.
-- If a clothing item is missing, leave that area neutral and minimal.
-
-FIT & REALISM:
-- Clothing must align naturally with the body (correct scale, folds, perspective).
-- Ensure proper layering (outerwear over top).
-- Maintain realistic fabric behavior, shadows, and contact with the body.
-
-POSE & FRAMING:
-- Full-body view from head to toe.
-- Natural upright standing pose facing forward.
-- Arms slightly away from the body for visibility.
-- Keep proportions unchanged.
-
-BACKGROUND & LIGHTING:
-- Clean white or neutral studio background.
-- Soft, even lighting.
-- No dramatic shadows, no stylization, no effects.
-
-OUTPUT:
-- Return ONLY one final image (OutfitImage).
-- No text, no explanation, no multiple variations.
+"You are a fashion avatar generator. Given this full-body photo of a person, generate a clean, photorealistic full-body avatar image of the same person. Requirements: (1) Preserve the person's exact face, facial features, skin tone, hair color, and hair style without any changes. (2) Preserve the person's body shape and proportions exactly. (3) Dress the avatar in a simple, form-fitting outfit of solid neutral colors (white top, black pants) so the body shape is clearly visible. (4) The avatar must be in a straight, neutral standing pose facing forward, arms slightly away from the body. (5) Place the avatar on a pure white background with no shadows, gradients, or textures. (6) The image should be full-body from head to toe with a small margin around the figure. (7) Lighting: soft, even, flat studio lighting — no dramatic shadows. Output only the avatar image."
         `.trim(),
       },
       ...validImages.map((image) => ({
