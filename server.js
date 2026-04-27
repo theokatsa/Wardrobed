@@ -151,16 +151,50 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     const parts = [
       {
         text: `
-Create a realistic full-body fashion try-on image.
+Create a photorealistic full-body fashion try-on image.
 
-Use the first image as the person's model photo.
-Dress the person using the provided clothing item images:
-top, bottom, shoes, outerwear, and accessories.
+INPUT ORDER:
+- Image 1: ModelPhoto (person)
+- Image 2+: Clothing items in this order:
+  TopImage, BottomImage, ShoesImage, OuterwearImage (optional), AccessoriesImage (optional)
 
-Keep the person's face, body proportions, pose, and background natural.
-Make the outfit look realistic and wearable.
-Do not add extra clothing items.
-Return only the final generated image.
+STRICT REQUIREMENTS:
+
+IDENTITY (DO NOT CHANGE):
+- Preserve the exact face, facial features, skin tone, hair, and identity from ModelPhoto.
+- Preserve the exact body shape and proportions.
+- Do not beautify, stylize, or modify the person.
+
+CLOTHING APPLICATION:
+- Apply ONLY the provided clothing items.
+- Map each item correctly:
+  TopImage → torso
+  BottomImage → legs
+  ShoesImage → feet
+  OuterwearImage → over top (if present)
+  AccessoriesImage → appropriate placement (if present)
+- Do NOT invent, replace, or hallucinate any clothing.
+- If a clothing item is missing, leave that area neutral and minimal.
+
+FIT & REALISM:
+- Clothing must align naturally with the body (correct scale, folds, perspective).
+- Ensure proper layering (outerwear over top).
+- Maintain realistic fabric behavior, shadows, and contact with the body.
+
+POSE & FRAMING:
+- Full-body view from head to toe.
+- Natural upright standing pose facing forward.
+- Arms slightly away from the body for visibility.
+- Keep proportions unchanged.
+
+BACKGROUND & LIGHTING:
+- Clean white or neutral studio background.
+- Soft, even lighting.
+- No dramatic shadows, no stylization, no effects.
+
+OUTPUT:
+- Return ONLY one final image (OutfitImage).
+- No text, no explanation, no multiple variations.
         `.trim(),
       },
       ...validImages.map((image) => ({
