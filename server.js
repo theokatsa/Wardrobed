@@ -22,11 +22,46 @@ function debugLog(label, value) {
   console.log(JSON.stringify(value, null, 2));
 }
 
+function normalizeKey(key) {
+  return String(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function getField(body, possibleNames) {
+  if (!body || typeof body !== "object") return undefined;
+
+  const sources = [
+    body,
+    body.data,
+    body.row,
+    body.values,
+    body.columns,
+    body.fields,
+  ].filter((source) => source && typeof source === "object");
+
+  for (const source of sources) {
+    const entries = Object.entries(source);
+
+    for (const name of possibleNames) {
+      const wanted = normalizeKey(name);
+
+      const match = entries.find(([key]) => normalizeKey(key) === wanted);
+
+      if (match) return match[1];
+    }
+  }
+
+  return undefined;
+}
+
 function firstImageUrl(value) {
   if (!value) return null;
 
   if (Array.isArray(value)) {
-    return firstImageUrl(value[0]);
+    for (const item of value) {
+      const found = firstImageUrl(item);
+      if (found) return found;
+    }
+    return null;
   }
 
   if (typeof value === "string") {
@@ -39,7 +74,15 @@ function firstImageUrl(value) {
   }
 
   if (typeof value === "object") {
-    return value.url || value.src || value.image || value.secure_url || null;
+    return (
+      value.url ||
+      value.src ||
+      value.image ||
+      value.secure_url ||
+      value.original_url ||
+      value.file_url ||
+      null
+    );
   }
 
   return null;
@@ -80,17 +123,56 @@ app.post("/generate-outfit", async (req, res) => {
     console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
     debugLog("REQUEST BODY", req.body);
 
-  
-    const rowId = req.body.rowId || req.body["Row ID"];
-const outfitName = req.body.outfitName || req.body.OutfitName;
-const topImage = req.body.topImage || req.body.TopImage;
-const bottomImage = req.body.bottomImage || req.body.BottomImage;
-const shoesImage = req.body.shoesImage || req.body.ShoesImage;
-const outerwearImage = req.body.outerwearImage || req.body.OuterwearImage;
-const accessoriesImage =
-  req.body.accessoriesImage || req.body.AccessoriesImage;
-const modelPhoto = req.body.modelPhoto || req.body["Model Photo"];
-const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
+    const rowId = getField(req.body, ["rowId", "Row ID", "RowID"]);
+    const outfitName = getField(req.body, [
+      "outfitName",
+      "OutfitName",
+      "Outfit Name",
+    ]);
+
+    const ownerEmail = getField(req.body, [
+      "ownerEmail",
+      "Owner Email",
+      "OwnerEmail",
+    ]);
+
+    const modelPhoto = getField(req.body, [
+      "modelPhoto",
+      "Model Photo",
+      "ModelPhoto",
+      "modelImage",
+      "Model Image",
+    ]);
+
+    const topImage = getField(req.body, [
+      "topImage",
+      "TopImage",
+      "Top Image",
+    ]);
+
+    const bottomImage = getField(req.body, [
+      "bottomImage",
+      "BottomImage",
+      "Bottom Image",
+    ]);
+
+    const shoesImage = getField(req.body, [
+      "shoesImage",
+      "ShoesImage",
+      "Shoes Image",
+    ]);
+
+    const outerwearImage = getField(req.body, [
+      "outerwearImage",
+      "OuterwearImage",
+      "Outerwear Image",
+    ]);
+
+    const accessoriesImage = getField(req.body, [
+      "accessoriesImage",
+      "AccessoriesImage",
+      "Accessories Image",
+    ]);
 
     debugLog("ENV CHECK", {
       hasGeminiKey: Boolean(GEMINI_API_KEY),
@@ -100,8 +182,6 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     });
 
     if (!GEMINI_API_KEY) {
-      console.error("Missing GEMINI_API_KEY");
-
       return res.status(500).json({
         error: "Missing GEMINI_API_KEY",
       });
@@ -132,8 +212,6 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     console.log("Valid image count:", validImages.length);
 
     if (!validImages.length) {
-      console.error("No valid image URLs were provided");
-
       return res.status(400).json({
         error: "No valid image URLs were provided",
         extractedUrls,
@@ -154,53 +232,30 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
 Create a photorealistic full-body fashion try-on image.
 
 INPUT ORDER:
-- Image 1: ModelPhoto (person)
+- Image 1: ModelPhoto/person if provided
 - Image 2+: Clothing items in this order:
-  TopImage, BottomImage, ShoesImage, OuterwearImage (optional), AccessoriesImage (optional)
+  TopImage, BottomImage, ShoesImage, OuterwearImage optional, AccessoriesImage optional
 
 STRICT REQUIREMENTS:
-
-IDENTITY (DO NOT CHANGE):
-- Preserve the exact face, facial features, skin tone, hair, and identity from ModelPhoto.
-- Preserve the exact body shape and proportions.
-- Do not beautify, stylize, or modify the person.
-
-CLOTHING APPLICATION:
+- Preserve the model's face, skin tone, hair, body shape, and proportions if ModelPhoto is provided.
 - Apply ONLY the provided clothing items.
-- Map each item correctly:
-  TopImage → torso
-  BottomImage → legs
-  ShoesImage → feet
-  OuterwearImage → over top (if present)
-  AccessoriesImage → appropriate placement (if present)
-- Do NOT invent, replace, or hallucinate any clothing.
-- If a clothing item is missing, leave that area neutral and minimal.
-
-FIT & REALISM:
-- Clothing must align naturally with the body (correct scale, folds, perspective).
-- Ensure proper layering (outerwear over top).
-- Maintain realistic fabric behavior, shadows, and contact with the body.
-
-POSE & FRAMING:
-- Full-body view from head to toe.
-- Natural upright standing pose facing forward.
-- Arms slightly away from the body for visibility.
-- Keep proportions unchanged.
-
-BACKGROUND & LIGHTING:
+- TopImage goes on torso.
+- BottomImage goes on legs.
+- ShoesImage goes on feet.
+- OuterwearImage goes over the top if present.
+- AccessoriesImage goes in the appropriate place if present.
+- Do not invent or replace clothing.
+- Full-body view, standing forward.
 - Clean white or neutral studio background.
 - Soft, even lighting.
-- No dramatic shadows, no stylization, no effects.
-
-OUTPUT:
-- Return ONLY one final image (OutfitImage).
-- No text, no explanation, no multiple variations.        `.trim(),
+- Return only one final image.
+        `.trim(),
       },
       ...validImages.map((image) => ({
         inlineData: {
-    mimeType: image.mime_type,
-    data: image.data,
-  },
+          mimeType: image.mime_type,
+          data: image.data,
+        },
       })),
     ];
 
@@ -231,25 +286,23 @@ OUTPUT:
     }
 
     const imagePart = geminiData.candidates?.[0]?.content?.parts?.find(
-  (part) => part.inlineData?.data || part.inline_data?.data
-);
+      (part) => part.inlineData?.data || part.inline_data?.data
+    );
 
-if (!imagePart) {
-  console.error("No generated image returned from Gemini");
+    if (!imagePart) {
+      return res.status(500).json({
+        error: "No generated image returned",
+        raw: geminiData,
+      });
+    }
 
-  return res.status(500).json({
-    error: "No generated image returned",
-    raw: geminiData,
-  });
-}
+    const generatedBase64 =
+      imagePart.inlineData?.data || imagePart.inline_data?.data;
 
-const generatedBase64 =
-  imagePart.inlineData?.data || imagePart.inline_data?.data;
-
-const mimeType =
-  imagePart.inlineData?.mimeType ||
-  imagePart.inline_data?.mime_type ||
-  "image/png";
+    const mimeType =
+      imagePart.inlineData?.mimeType ||
+      imagePart.inline_data?.mime_type ||
+      "image/png";
 
     console.log("Uploading to Cloudinary...");
 
