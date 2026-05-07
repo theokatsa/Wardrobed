@@ -80,17 +80,31 @@ app.post("/generate-outfit", async (req, res) => {
     console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
     debugLog("REQUEST BODY", req.body);
 
-  
     const rowId = req.body.rowId || req.body["Row ID"];
-const outfitName = req.body.outfitName || req.body.OutfitName;
-const topImage = req.body.topImage || req.body.TopImage;
-const bottomImage = req.body.bottomImage || req.body.BottomImage;
-const shoesImage = req.body.shoesImage || req.body.ShoesImage;
-const outerwearImage = req.body.outerwearImage || req.body.OuterwearImage;
-const accessoriesImage =
-  req.body.accessoriesImage || req.body.AccessoriesImage;
-const modelPhoto = req.body.modelPhoto || req.body["Model Photo"];
-const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
+    const outfitName = req.body.outfitName || req.body.OutfitName;
+
+    const topImage = req.body.topImage || req.body.TopImage;
+    const bottomImage = req.body.bottomImage || req.body.BottomImage;
+    const shoesImage = req.body.shoesImage || req.body.ShoesImage;
+    const outerwearImage = req.body.outerwearImage || req.body.OuterwearImage;
+
+    const accessoriesImage =
+      req.body.accessoriesImage || req.body.AccessoriesImage;
+
+    const accessoriesImage1 =
+      req.body.accessoriesImage1 || req.body.AccessoriesImage1;
+
+    const accessoriesImage2 =
+      req.body.accessoriesImage2 || req.body.AccessoriesImage2;
+
+    const accessoriesImage3 =
+      req.body.accessoriesImage3 || req.body.AccessoriesImage3;
+
+    const accessoriesImage4 =
+      req.body.accessoriesImage4 || req.body.AccessoriesImage4;
+
+    const modelPhoto = req.body.modelPhoto || req.body["Model Photo"];
+    const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
 
     debugLog("ENV CHECK", {
       hasGeminiKey: Boolean(GEMINI_API_KEY),
@@ -100,8 +114,6 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     });
 
     if (!GEMINI_API_KEY) {
-      console.error("Missing GEMINI_API_KEY");
-
       return res.status(500).json({
         error: "Missing GEMINI_API_KEY",
       });
@@ -114,6 +126,10 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
       shoesImage: firstImageUrl(shoesImage),
       outerwearImage: firstImageUrl(outerwearImage),
       accessoriesImage: firstImageUrl(accessoriesImage),
+      accessoriesImage1: firstImageUrl(accessoriesImage1),
+      accessoriesImage2: firstImageUrl(accessoriesImage2),
+      accessoriesImage3: firstImageUrl(accessoriesImage3),
+      accessoriesImage4: firstImageUrl(accessoriesImage4),
     };
 
     debugLog("EXTRACTED IMAGE URLS", extractedUrls);
@@ -125,6 +141,10 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
       imageUrlToBase64("shoesImage", shoesImage),
       imageUrlToBase64("outerwearImage", outerwearImage),
       imageUrlToBase64("accessoriesImage", accessoriesImage),
+      imageUrlToBase64("accessoriesImage1", accessoriesImage1),
+      imageUrlToBase64("accessoriesImage2", accessoriesImage2),
+      imageUrlToBase64("accessoriesImage3", accessoriesImage3),
+      imageUrlToBase64("accessoriesImage4", accessoriesImage4),
     ]);
 
     const validImages = images.filter(Boolean);
@@ -132,8 +152,6 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
     console.log("Valid image count:", validImages.length);
 
     if (!validImages.length) {
-      console.error("No valid image URLs were provided");
-
       return res.status(400).json({
         error: "No valid image URLs were provided",
         extractedUrls,
@@ -144,6 +162,10 @@ const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
           shoesImage,
           outerwearImage,
           accessoriesImage,
+          accessoriesImage1,
+          accessoriesImage2,
+          accessoriesImage3,
+          accessoriesImage4,
         },
       });
     }
@@ -156,7 +178,8 @@ Create a photorealistic full-body fashion try-on image.
 INPUT ORDER:
 - Image 1: ModelPhoto (person)
 - Image 2+: Clothing items in this order:
-  TopImage, BottomImage, ShoesImage, OuterwearImage (optional), AccessoriesImage (optional)
+  TopImage, BottomImage, ShoesImage, OuterwearImage (optional),
+  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 (optional)
 
 STRICT REQUIREMENTS:
 
@@ -172,14 +195,20 @@ CLOTHING APPLICATION:
   BottomImage → legs
   ShoesImage → feet
   OuterwearImage → over top (if present)
-  AccessoriesImage → appropriate placement (if present)
-- Do NOT invent, replace, or hallucinate any clothing.
+  AccessoriesImage → appropriate accessory placement (if present)
+  AccessoriesImage1 → appropriate accessory placement (if present)
+  AccessoriesImage2 → appropriate accessory placement (if present)
+  AccessoriesImage3 → appropriate accessory placement (if present)
+  AccessoriesImage4 → appropriate accessory placement (if present)
+- Do NOT invent, replace, or hallucinate any clothing or accessories.
 - If a clothing item is missing, leave that area neutral and minimal.
+- If multiple accessories are provided, include all visible accessories naturally without overcrowding.
 
 FIT & REALISM:
 - Clothing must align naturally with the body (correct scale, folds, perspective).
 - Ensure proper layering (outerwear over top).
 - Maintain realistic fabric behavior, shadows, and contact with the body.
+- Accessories should match realistic scale and placement.
 
 POSE & FRAMING:
 - Full-body view from head to toe.
@@ -194,13 +223,14 @@ BACKGROUND & LIGHTING:
 
 OUTPUT:
 - Return ONLY one final image (OutfitImage).
-- No text, no explanation, no multiple variations.        `.trim(),
+- No text, no explanation, no multiple variations.
+        `.trim(),
       },
       ...validImages.map((image) => ({
         inlineData: {
-    mimeType: image.mime_type,
-    data: image.data,
-  },
+          mimeType: image.mime_type,
+          data: image.data,
+        },
       })),
     ];
 
@@ -231,25 +261,23 @@ OUTPUT:
     }
 
     const imagePart = geminiData.candidates?.[0]?.content?.parts?.find(
-  (part) => part.inlineData?.data || part.inline_data?.data
-);
+      (part) => part.inlineData?.data || part.inline_data?.data
+    );
 
-if (!imagePart) {
-  console.error("No generated image returned from Gemini");
+    if (!imagePart) {
+      return res.status(500).json({
+        error: "No generated image returned",
+        raw: geminiData,
+      });
+    }
 
-  return res.status(500).json({
-    error: "No generated image returned",
-    raw: geminiData,
-  });
-}
+    const generatedBase64 =
+      imagePart.inlineData?.data || imagePart.inline_data?.data;
 
-const generatedBase64 =
-  imagePart.inlineData?.data || imagePart.inline_data?.data;
-
-const mimeType =
-  imagePart.inlineData?.mimeType ||
-  imagePart.inline_data?.mime_type ||
-  "image/png";
+    const mimeType =
+      imagePart.inlineData?.mimeType ||
+      imagePart.inline_data?.mime_type ||
+      "image/png";
 
     console.log("Uploading to Cloudinary...");
 
