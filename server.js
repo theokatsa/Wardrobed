@@ -45,6 +45,14 @@ function firstImageUrl(value) {
   return null;
 }
 
+function needsGeneratedOutfitName(outfitName) {
+  return (
+    !outfitName ||
+    String(outfitName).trim() === "" ||
+    String(outfitName).trim().toLowerCase() === "my outfit"
+  );
+}
+
 async function imageUrlToBase64(label, value) {
   const url = firstImageUrl(value);
 
@@ -71,6 +79,58 @@ async function imageUrlToBase64(label, value) {
   };
 }
 
+async function generateOutfitNameFromImages(validImages) {
+  const response = await fetch(GEMINI_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": GEMINI_API_KEY,
+    },
+    body: JSON.stringify({
+      contents: [
+        {
+          parts: [
+            {
+              text: `
+Generate a short stylish outfit name based only on the provided clothing images.
+
+Rules:
+- 2 to 5 words maximum
+- Fashion/app style name
+- No quotes
+- No explanations
+- Do not say "My Outfit"
+              `.trim(),
+            },
+            ...validImages.map((image) => ({
+              inlineData: {
+                mimeType: image.mime_type,
+                data: image.data,
+              },
+            })),
+          ],
+        },
+      ],
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    console.log("Outfit name generation failed:", data);
+    return "Styled Outfit";
+  }
+
+  return (
+    data.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text)
+      .filter(Boolean)
+      .join(" ")
+      .replace(/["']/g, "")
+      .trim() || "Styled Outfit"
+  );
+}
+
 app.get("/", (req, res) => {
   res.send("Wardrobed API is running");
 });
@@ -81,7 +141,7 @@ app.post("/generate-outfit", async (req, res) => {
     debugLog("REQUEST BODY", req.body);
 
     const rowId = req.body.rowId || req.body["Row ID"];
-    const outfitName = req.body.outfitName || req.body.OutfitName;
+    let outfitName = req.body.outfitName || req.body.OutfitName;
 
     const topImage = req.body.topImage || req.body.TopImage;
     const bottomImage = req.body.bottomImage || req.body.BottomImage;
@@ -170,6 +230,10 @@ app.post("/generate-outfit", async (req, res) => {
       });
     }
 
+    if (needsGeneratedOutfitName(outfitName)) {
+      outfitName = await generateOutfitNameFromImages(validImages);
+    }
+
     const parts = [
       {
         text: `
@@ -205,8 +269,8 @@ CLOTHING APPLICATION:
 - If multiple accessories are provided, include all visible accessories naturally without overcrowding.
 
 FIT & REALISM:
-- Clothing must align naturally with the body (correct scale, folds, perspective).
-- Ensure proper layering (outerwear over top).
+- Clothing must align naturally with the body using correct scale, folds, and perspective.
+- Ensure proper layering, especially outerwear over the top.
 - Maintain realistic fabric behavior, shadows, and contact with the body.
 - Accessories should match realistic scale and placement.
 
@@ -214,16 +278,31 @@ POSE & FRAMING:
 - Full-body view from head to toe.
 - Natural upright standing pose facing forward.
 - Arms slightly away from the body for visibility.
-- Keep proportions unchanged.
+- Keep body proportions unchanged.
+- Center the person in the frame.
+- Leave balanced empty space around the person.
 
 BACKGROUND & LIGHTING:
-- Clean white or neutral studio background.
-- Soft, even lighting.
+- Clean seamless white or very light neutral studio background.
+- No clutter, no props, no text, no logos, no watermark.
+- Soft even studio lighting.
 - No dramatic shadows, no stylization, no effects.
 
+IMAGE QUALITY:
+- Generate a crisp, clean, photorealistic image.
+- No pixelation, no blur, no compression artifacts.
+- No distorted hands, face, limbs, shoes, or accessories.
+- High-resolution fashion catalog quality.
+
+COMPOSITION:
+- Final image must be 4:3 aspect ratio.
+- Clean product-style fashion try-on composition.
+
 OUTPUT:
-- Return ONLY one final image (OutfitImage).
-- No text, no explanation, no multiple variations.
+- Return ONLY one final image.
+- No text.
+- No explanation.
+- No multiple variations.
         `.trim(),
       },
       ...validImages.map((image) => ({
@@ -290,14 +369,29 @@ OUTPUT:
       }
     );
 
+    const finalImageUrl = cloudinary.url(upload.public_id, {
+      secure: true,
+      transformation: [
+        {
+          aspect_ratio: "4:3",
+          crop: "fill",
+          gravity: "auto",
+          width: 1600,
+          height: 1200,
+          quality: "auto:best",
+          fetch_format: "auto",
+        },
+      ],
+    });
+
     debugLog("CLOUDINARY UPLOAD", upload);
 
     return res.json({
       rowId,
       outfitName,
       ownerEmail,
-      imageUrl: upload.secure_url,
-      outfitImage: upload.secure_url,
+      imageUrl: finalImageUrl,
+      outfitImage: finalImageUrl,
       status: "success",
     });
   } catch (err) {
