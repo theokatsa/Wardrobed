@@ -387,13 +387,20 @@ OUTPUT:
     debugLog("CLOUDINARY UPLOAD", upload);
 
     return res.json({
-      rowId,
-      outfitName,
-      ownerEmail,
-      imageUrl: finalImageUrl,
-      outfitImage: finalImageUrl,
-      status: "success",
-    });
+  rowId,
+
+  // Use both versions so Glide can detect either one
+  OutfitName: outfitName,
+  outfitName,
+
+  ownerEmail,
+
+  imageUrl: finalImageUrl,
+  outfitImage: finalImageUrl,
+  OutfitImage: finalImageUrl,
+
+  status: "success",
+});
   } catch (err) {
     console.error("\n========== GENERATE OUTFIT ERROR ==========");
     console.error(err);
