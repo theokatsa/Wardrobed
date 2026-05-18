@@ -265,19 +265,41 @@ Create a photorealistic full-body fashion try-on image.
 
 ${personDetailsPrompt}
 
+Create a photorealistic full-body fashion try-on image.
+
+PERSON DETAILS:
+- Age: ${age || "unknown"}
+- Height: ${height || "unknown"} cm
+
+IMPORTANT PRIORITY:
+- The generated person MUST clearly reflect the provided age and height.
+- Differences in age and height should be visually noticeable.
+- Do NOT ignore age or height even if ModelPhoto suggests otherwise.
+
 INPUT ORDER:
 - Image 1: ModelPhoto (person)
 - Image 2+: Clothing items in this order:
   TopImage, BottomImage, ShoesImage, OuterwearImage (optional),
   AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 (optional)
 
-STRICT REQUIREMENTS:
+IDENTITY (BALANCED):
+- Preserve the person's facial identity (face, skin tone, hair, likeness).
+- Keep the person recognizable as the same individual.
+- Adjust body proportions naturally to match the provided height.
+- Adjust facial maturity and features to match the provided age.
+- Do NOT freeze the body exactly as in the original image.
 
-IDENTITY:
-- Preserve the exact face, facial features, skin tone, hair, and identity from ModelPhoto.
-- Preserve the person's natural body type from ModelPhoto.
-- Slightly adjust body proportions ONLY if needed to match the provided height realistically.
-- Do not beautify, stylize, or modify the person's identity.
+AGE & HEIGHT REALISM:
+- The person should look like a realistic ${age || "unknown"}-year-old human.
+- The body proportions must match a real person of ${height || "unknown"} cm height.
+- Height should affect:
+  - leg length
+  - torso-to-leg ratio
+  - overall silhouette
+- Age should affect:
+  - facial maturity
+  - skin texture
+  - subtle posture and presence
 
 CLOTHING APPLICATION:
 - Apply ONLY the provided clothing items.
@@ -285,49 +307,41 @@ CLOTHING APPLICATION:
   TopImage → torso
   BottomImage → legs
   ShoesImage → feet
-  OuterwearImage → over top, if present
-  AccessoriesImage → appropriate accessory placement, if present
-  AccessoriesImage1 → appropriate accessory placement, if present
-  AccessoriesImage2 → appropriate accessory placement, if present
-  AccessoriesImage3 → appropriate accessory placement, if present
-  AccessoriesImage4 → appropriate accessory placement, if present
-- Do NOT invent, replace, or hallucinate any clothing or accessories.
-- If a clothing item is missing, leave that area neutral and minimal.
-- If multiple accessories are provided, include all visible accessories naturally without overcrowding.
+  OuterwearImage → over top (if present)
+  AccessoriesImage → appropriate placement
+  AccessoriesImage1 → appropriate placement
+  AccessoriesImage2 → appropriate placement
+  AccessoriesImage3 → appropriate placement
+  AccessoriesImage4 → appropriate placement
+- Do NOT invent or change clothing.
 
 FIT & REALISM:
-- Clothing must align naturally with the body using correct scale, folds, and perspective.
-- Ensure clothing scale matches a real person with height: ${height || "unknown"} cm.
-- Ensure age appearance matches: ${age || "unknown"}.
-- Ensure proper layering, especially outerwear over the top.
-- Maintain realistic fabric behavior, shadows, and contact with the body.
-- Accessories should match realistic scale and placement.
+- Clothing must align naturally with the adjusted body.
+- Ensure clothing scale matches the updated proportions.
+- Maintain realistic folds, shadows, and fabric behavior.
+- Accessories must be correctly scaled.
 
 POSE & FRAMING:
 - Full-body view from head to toe.
 - Natural upright standing pose facing forward.
-- Arms slightly away from the body for visibility.
+- Arms slightly away from the body.
 - Center the person in the frame.
-- Leave balanced empty space around the person.
 
 BACKGROUND & LIGHTING:
-- Clean seamless white or very light neutral studio background.
-- No clutter, no props, no text, no logos, no watermark.
-- Soft even studio lighting.
-- No dramatic shadows, no stylization, no effects.
+- Clean white or light neutral studio background.
+- Soft even lighting.
+- No props, no text, no logos.
 
 IMAGE QUALITY:
-- Generate a crisp, clean, photorealistic image.
-- No pixelation, no blur, no compression artifacts.
-- No distorted hands, face, limbs, shoes, or accessories.
-- High-resolution fashion catalog quality.
+- High-resolution, sharp, photorealistic.
+- No distortions, no artifacts.
 
 COMPOSITION:
-- Final image must be 4:3 aspect ratio.
-- Clean product-style fashion try-on composition.
+- 4:3 aspect ratio.
+- Clean fashion catalog style.
 
 OUTPUT:
-- Return ONLY one final image.
+- Return ONLY one image.
 - No text.
 - No explanation.
 - No multiple variations.
