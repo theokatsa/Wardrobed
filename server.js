@@ -166,6 +166,14 @@ app.post("/generate-outfit", async (req, res) => {
     const modelPhoto = req.body.modelPhoto || req.body["Model Photo"];
     const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
 
+    const height = req.body.height || req.body.Height;
+    const age = req.body.age || req.body.Age;
+
+    debugLog("PERSON DETAILS", {
+      height,
+      age,
+    });
+
     debugLog("ENV CHECK", {
       hasGeminiKey: Boolean(GEMINI_API_KEY),
       hasCloudinaryCloudName: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
@@ -226,6 +234,8 @@ app.post("/generate-outfit", async (req, res) => {
           accessoriesImage2,
           accessoriesImage3,
           accessoriesImage4,
+          height,
+          age,
         },
       });
     }
@@ -234,10 +244,26 @@ app.post("/generate-outfit", async (req, res) => {
       outfitName = await generateOutfitNameFromImages(validImages);
     }
 
+    const personDetailsPrompt = `
+PERSON DETAILS:
+- Age: ${age || "unknown"}
+- Height: ${height || "unknown"} cm
+
+PERSON DETAIL REQUIREMENTS:
+- Use the provided age to reflect realistic facial maturity and overall appearance.
+- Use the provided height to guide realistic body proportions and clothing scale.
+- If height is unknown, preserve the proportions from ModelPhoto.
+- If age is unknown, preserve the apparent age from ModelPhoto.
+- Do not make the person look younger or older than the provided age.
+- Do not exaggerate height. Keep proportions natural and realistic.
+    `.trim();
+
     const parts = [
       {
         text: `
 Create a photorealistic full-body fashion try-on image.
+
+${personDetailsPrompt}
 
 INPUT ORDER:
 - Image 1: ModelPhoto (person)
@@ -247,10 +273,11 @@ INPUT ORDER:
 
 STRICT REQUIREMENTS:
 
-IDENTITY (DO NOT CHANGE):
+IDENTITY:
 - Preserve the exact face, facial features, skin tone, hair, and identity from ModelPhoto.
-- Preserve the exact body shape and proportions.
-- Do not beautify, stylize, or modify the person.
+- Preserve the person's natural body type from ModelPhoto.
+- Slightly adjust body proportions ONLY if needed to match the provided height realistically.
+- Do not beautify, stylize, or modify the person's identity.
 
 CLOTHING APPLICATION:
 - Apply ONLY the provided clothing items.
@@ -258,18 +285,20 @@ CLOTHING APPLICATION:
   TopImage → torso
   BottomImage → legs
   ShoesImage → feet
-  OuterwearImage → over top (if present)
-  AccessoriesImage → appropriate accessory placement (if present)
-  AccessoriesImage1 → appropriate accessory placement (if present)
-  AccessoriesImage2 → appropriate accessory placement (if present)
-  AccessoriesImage3 → appropriate accessory placement (if present)
-  AccessoriesImage4 → appropriate accessory placement (if present)
+  OuterwearImage → over top, if present
+  AccessoriesImage → appropriate accessory placement, if present
+  AccessoriesImage1 → appropriate accessory placement, if present
+  AccessoriesImage2 → appropriate accessory placement, if present
+  AccessoriesImage3 → appropriate accessory placement, if present
+  AccessoriesImage4 → appropriate accessory placement, if present
 - Do NOT invent, replace, or hallucinate any clothing or accessories.
 - If a clothing item is missing, leave that area neutral and minimal.
 - If multiple accessories are provided, include all visible accessories naturally without overcrowding.
 
 FIT & REALISM:
 - Clothing must align naturally with the body using correct scale, folds, and perspective.
+- Ensure clothing scale matches a real person with height: ${height || "unknown"} cm.
+- Ensure age appearance matches: ${age || "unknown"}.
 - Ensure proper layering, especially outerwear over the top.
 - Maintain realistic fabric behavior, shadows, and contact with the body.
 - Accessories should match realistic scale and placement.
@@ -278,7 +307,6 @@ POSE & FRAMING:
 - Full-body view from head to toe.
 - Natural upright standing pose facing forward.
 - Arms slightly away from the body for visibility.
-- Keep body proportions unchanged.
 - Center the person in the frame.
 - Leave balanced empty space around the person.
 
@@ -387,20 +415,22 @@ OUTPUT:
     debugLog("CLOUDINARY UPLOAD", upload);
 
     return res.json({
-  rowId,
+      rowId,
 
-  // Use both versions so Glide can detect either one
-  OutfitName: outfitName,
-  outfitName,
+      OutfitName: outfitName,
+      outfitName,
 
-  ownerEmail,
+      ownerEmail,
 
-  imageUrl: finalImageUrl,
-  outfitImage: finalImageUrl,
-  OutfitImage: finalImageUrl,
+      height,
+      age,
 
-  status: "success",
-});
+      imageUrl: finalImageUrl,
+      outfitImage: finalImageUrl,
+      OutfitImage: finalImageUrl,
+
+      status: "success",
+    });
   } catch (err) {
     console.error("\n========== GENERATE OUTFIT ERROR ==========");
     console.error(err);
