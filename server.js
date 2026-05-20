@@ -148,6 +148,9 @@ app.post("/generate-outfit", async (req, res) => {
     const shoesImage = req.body.shoesImage || req.body.ShoesImage;
     const outerwearImage = req.body.outerwearImage || req.body.OuterwearImage;
 
+    const jumpsuitImage = req.body.jumpsuitImage || req.body.JumpsuitImage;
+    const dressImage = req.body.dressImage || req.body.DressImage;
+
     const accessoriesImage =
       req.body.accessoriesImage || req.body.AccessoriesImage;
 
@@ -193,6 +196,8 @@ app.post("/generate-outfit", async (req, res) => {
       bottomImage: firstImageUrl(bottomImage),
       shoesImage: firstImageUrl(shoesImage),
       outerwearImage: firstImageUrl(outerwearImage),
+      jumpsuitImage: firstImageUrl(jumpsuitImage),
+      dressImage: firstImageUrl(dressImage),
       accessoriesImage: firstImageUrl(accessoriesImage),
       accessoriesImage1: firstImageUrl(accessoriesImage1),
       accessoriesImage2: firstImageUrl(accessoriesImage2),
@@ -208,6 +213,8 @@ app.post("/generate-outfit", async (req, res) => {
       imageUrlToBase64("bottomImage", bottomImage),
       imageUrlToBase64("shoesImage", shoesImage),
       imageUrlToBase64("outerwearImage", outerwearImage),
+      imageUrlToBase64("jumpsuitImage", jumpsuitImage),
+      imageUrlToBase64("dressImage", dressImage),
       imageUrlToBase64("accessoriesImage", accessoriesImage),
       imageUrlToBase64("accessoriesImage1", accessoriesImage1),
       imageUrlToBase64("accessoriesImage2", accessoriesImage2),
@@ -229,6 +236,8 @@ app.post("/generate-outfit", async (req, res) => {
           bottomImage,
           shoesImage,
           outerwearImage,
+          jumpsuitImage,
+          dressImage,
           accessoriesImage,
           accessoriesImage1,
           accessoriesImage2,
@@ -244,27 +253,9 @@ app.post("/generate-outfit", async (req, res) => {
       outfitName = await generateOutfitNameFromImages(validImages);
     }
 
-    const personDetailsPrompt = `
-PERSON DETAILS:
-- Age: ${age || "unknown"}
-- Height: ${height || "unknown"} cm
-
-PERSON DETAIL REQUIREMENTS:
-- Use the provided age to reflect realistic facial maturity and overall appearance.
-- Use the provided height to guide realistic body proportions and clothing scale.
-- If height is unknown, preserve the proportions from ModelPhoto.
-- If age is unknown, preserve the apparent age from ModelPhoto.
-- Do not make the person look younger or older than the provided age.
-- Do not exaggerate height. Keep proportions natural and realistic.
-    `.trim();
-
     const parts = [
       {
         text: `
-Create a photorealistic full-body fashion try-on image.
-
-${personDetailsPrompt}
-
 Create a photorealistic full-body fashion try-on image.
 
 PERSON DETAILS:
@@ -279,11 +270,14 @@ IMPORTANT PRIORITY:
 INPUT ORDER:
 - Image 1: ModelPhoto (person)
 - Image 2+: Clothing items in this order:
-  TopImage, BottomImage, ShoesImage, OuterwearImage (optional),
+  TopImage, BottomImage, ShoesImage,
+  OuterwearImage (optional),
+  JumpsuitImage (optional),
+  DressImage (optional),
   AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 (optional)
 
-IDENTITY (BALANCED):
-- Preserve the person's facial identity (face, skin tone, hair, likeness).
+IDENTITY:
+- Preserve the person's facial identity, skin tone, hair, and likeness.
 - Keep the person recognizable as the same individual.
 - Adjust body proportions naturally to match the provided height.
 - Adjust facial maturity and features to match the provided age.
@@ -292,14 +286,9 @@ IDENTITY (BALANCED):
 AGE & HEIGHT REALISM:
 - The person should look like a realistic ${age || "unknown"}-year-old human.
 - The body proportions must match a real person of ${height || "unknown"} cm height.
-- Height should affect:
-  - leg length
-  - torso-to-leg ratio
-  - overall silhouette
-- Age should affect:
-  - facial maturity
-  - skin texture
-  - subtle posture and presence
+- Height should affect leg length, torso-to-leg ratio, and overall silhouette.
+- Age should affect facial maturity, skin texture, subtle posture, and presence.
+- Keep proportions natural and realistic.
 
 CLOTHING APPLICATION:
 - Apply ONLY the provided clothing items.
@@ -307,41 +296,54 @@ CLOTHING APPLICATION:
   TopImage → torso
   BottomImage → legs
   ShoesImage → feet
-  OuterwearImage → over top (if present)
-  AccessoriesImage → appropriate placement
-  AccessoriesImage1 → appropriate placement
-  AccessoriesImage2 → appropriate placement
-  AccessoriesImage3 → appropriate placement
-  AccessoriesImage4 → appropriate placement
-- Do NOT invent or change clothing.
+  OuterwearImage → layered over the outfit, if present
+  JumpsuitImage → full body garment covering torso and legs
+  DressImage → full body garment covering torso and legs
+  AccessoriesImage → appropriate accessory placement
+  AccessoriesImage1 → appropriate accessory placement
+  AccessoriesImage2 → appropriate accessory placement
+  AccessoriesImage3 → appropriate accessory placement
+  AccessoriesImage4 → appropriate accessory placement
+
+FULL-BODY GARMENT RULES:
+- If JumpsuitImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
+- If DressImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
+- If both JumpsuitImage and DressImage are provided, use only the one that appears most complete and realistic for the outfit.
+- Do NOT layer a dress over pants unless the provided clothing clearly shows that styling.
+- Do NOT combine a jumpsuit with separate top or bottom pieces.
+- Outerwear may still be layered over a jumpsuit or dress if provided.
+- Shoes and accessories should still be applied normally.
 
 FIT & REALISM:
 - Clothing must align naturally with the adjusted body.
 - Ensure clothing scale matches the updated proportions.
 - Maintain realistic folds, shadows, and fabric behavior.
 - Accessories must be correctly scaled.
+- Ensure proper layering and realistic contact between garments and body.
 
 POSE & FRAMING:
 - Full-body view from head to toe.
 - Natural upright standing pose facing forward.
 - Arms slightly away from the body.
 - Center the person in the frame.
+- Leave balanced empty space around the person.
 
 BACKGROUND & LIGHTING:
 - Clean white or light neutral studio background.
 - Soft even lighting.
-- No props, no text, no logos.
+- No props, no text, no logos, no watermark.
 
 IMAGE QUALITY:
 - High-resolution, sharp, photorealistic.
 - No distortions, no artifacts.
+- No distorted hands, face, limbs, shoes, or accessories.
 
 COMPOSITION:
 - 4:3 aspect ratio.
 - Clean fashion catalog style.
 
 OUTPUT:
-- Return ONLY one image.
+- Return ONLY one final image.
 - No text.
 - No explanation.
 - No multiple variations.
