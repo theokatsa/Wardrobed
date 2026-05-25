@@ -175,10 +175,12 @@ app.post("/generate-outfit", async (req, res) => {
 
     const height = req.body.height || req.body.Height;
     const age = req.body.age || req.body.Age;
+    const comments = req.body.comments || req.body.Comments;
 
     debugLog("PERSON DETAILS", {
       height,
       age,
+      comments,
     });
 
     debugLog("ENV CHECK", {
@@ -249,6 +251,7 @@ app.post("/generate-outfit", async (req, res) => {
           accessoriesImage4,
           height,
           age,
+          comments,
         },
       });
     }
@@ -260,94 +263,136 @@ app.post("/generate-outfit", async (req, res) => {
     const parts = [
       {
         text: `
-Create a photorealistic full-body fashion try-on image.
+Create a clean photorealistic full-body outfit preview image.
+
+STYLE TARGET:
+- The final image must look like a simple app catalog outfit preview.
+- Match the visual style of a basic full-body wardrobe app thumbnail.
+- The person should appear small-to-medium in the frame, with full body visible from head to shoes.
+- The image should look like a clean product preview, not a fashion editorial photo.
+- Avoid dramatic fashion poses, close-up framing, runway styling, or lifestyle photography.
 
 PERSON DETAILS:
 - Age: ${age || "unknown"}
 - Height: ${height || "unknown"} cm
 
+USER COMMENTS / STYLING NOTES:
+${comments || "None"}
+
+COMMENTS RULES:
+- Use the comments only for styling guidance.
+- Comments may affect fit or wear style, such as tucked, untucked, oversized, relaxed, sleeves rolled, or similar styling.
+- Comments must NOT add new clothing items.
+- Comments must NOT remove selected clothing items.
+- Comments must NOT change the color, design, or category of selected clothing.
+- If comments conflict with the clothing rules, ignore the conflicting part.
+
 IMPORTANT PRIORITY:
-- The generated person MUST clearly reflect the provided age and height.
-- Differences in age and height should be visually noticeable.
-- Do NOT ignore age or height even if ModelPhoto suggests otherwise.
+- Preserve the person from ModelPhoto as much as possible.
+- Keep a neutral forward-facing standing pose.
+- Do not create a new model style.
+- Do not make the person look like a professional fashion shoot.
+- Use only the selected clothing images and the explicitly allowed fallback items.
+- Do NOT invent, add, or hallucinate extra clothing.
 
 INPUT ORDER:
-- Image 1: ModelPhoto (person)
+- Image 1: ModelPhoto/person
 - Image 2+: Clothing items in this order:
   TopImage, BottomImage, ShoesImage,
-  OuterwearImage (optional),
-  JumpsuitImage (optional),
-  DressImage (optional),
-  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 (optional)
+  OuterwearImage,
+  JumpsuitImage,
+  DressImage,
+  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4
 
 IDENTITY:
-- Preserve the person's facial identity, skin tone, hair, and likeness.
-- Keep the person recognizable as the same individual.
-- Adjust body proportions naturally to match the provided height.
-- Adjust facial maturity and features to match the provided age.
-- Do NOT freeze the body exactly as in the original image.
-
-AGE & HEIGHT REALISM:
-- The person should look like a realistic ${age || "unknown"}-year-old human.
-- The body proportions must match a real person of ${height || "unknown"} cm height.
-- Height should affect leg length, torso-to-leg ratio, and overall silhouette.
-- Age should affect facial maturity, skin texture, subtle posture, and presence.
-- Keep proportions natural and realistic.
+- Preserve facial identity, skin tone, hair, and general body type.
+- Keep the person recognizable.
+- Do not beautify, stylize, glamorize, or dramatically alter the person.
+- Adjust body proportions only subtly and naturally if needed to match the provided height and age.
 
 CLOTHING APPLICATION:
 - Apply ONLY the provided clothing items.
-- Map each item correctly:
-  TopImage → torso
-  BottomImage → legs
-  ShoesImage → feet
-  OuterwearImage → layered over the outfit, if present
-  JumpsuitImage → full body garment covering torso and legs
-  DressImage → full body garment covering torso and legs
-  AccessoriesImage → appropriate accessory placement
-  AccessoriesImage1 → appropriate accessory placement
-  AccessoriesImage2 → appropriate accessory placement
-  AccessoriesImage3 → appropriate accessory placement
-  AccessoriesImage4 → appropriate accessory placement
+- Do not invent extra clothing.
+- Do not add extra styling pieces.
+- Do not add accessories unless an accessory image is provided.
+- Keep clothing design, color, and category faithful to the input images.
+
+MAPPING:
+- TopImage → torso
+- BottomImage → legs
+- ShoesImage → feet
+- OuterwearImage → over outfit only if provided
+- JumpsuitImage → full-body garment
+- DressImage → full-body garment
+- AccessoriesImage through AccessoriesImage4 → accessories only if provided
 
 FULL-BODY GARMENT RULES:
-- If JumpsuitImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
-- If DressImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
-- If both JumpsuitImage and DressImage are provided, use only the one that appears most complete and realistic for the outfit.
-- Do NOT layer a dress over pants unless the provided clothing clearly shows that styling.
-- Do NOT combine a jumpsuit with separate top or bottom pieces.
-- Outerwear may still be layered over a jumpsuit or dress if provided.
-- Shoes and accessories should still be applied normally.
+- If JumpsuitImage is provided, use it as the main outfit and do not use TopImage or BottomImage.
+- If DressImage is provided, use it as the main outfit and do not use TopImage or BottomImage.
+- Do not combine dress or jumpsuit with separate top/bottom pieces.
+- Shoes may still be used with dress or jumpsuit.
+
+MISSING ITEM FALLBACK RULES:
+- Fallback clothing is allowed only to complete an incomplete outfit.
+- Fallback clothing must be plain black, minimal, fitted, neutral, and without logos.
+- If TopImage is provided and BottomImage is missing, add simple plain black fitted pants.
+- If BottomImage is provided and TopImage is missing, add simple plain black fitted t-shirt.
+- If ShoesImage is missing, add simple plain black sneakers.
+- If TopImage and BottomImage are both missing, and no DressImage or JumpsuitImage is provided, add simple plain black fitted t-shirt and simple plain black fitted pants.
+- If DressImage is provided, do not add fallback top or fallback bottom. Only add simple plain black sneakers if ShoesImage is missing.
+- If JumpsuitImage is provided, do not add fallback top or fallback bottom. Only add simple plain black sneakers if ShoesImage is missing.
+
+STRICT PROHIBITIONS:
+- Do NOT add jackets, coats, shirts, pants, skirts, dresses, bags, hats, jewelry, glasses, scarves, belts, or accessories unless they are provided or explicitly allowed as fallback.
+- Do NOT add duplicate clothing.
+- Do NOT add logos or branding.
+- Do NOT change clothing colors.
+- Do NOT change clothing patterns.
+- Do NOT change clothing category.
 
 FIT & REALISM:
-- Clothing must align naturally with the adjusted body.
-- Ensure clothing scale matches the updated proportions.
-- Maintain realistic folds, shadows, and fabric behavior.
-- Accessories must be correctly scaled.
-- Ensure proper layering and realistic contact between garments and body.
+- Clothing must align naturally with the body.
+- Ensure correct scale, folds, perspective, shadows, and fabric behavior.
+- Ensure realistic layering and contact with the body.
+- Accessories must be realistic in scale and placement.
 
 POSE & FRAMING:
 - Full-body view from head to toe.
-- Natural upright standing pose facing forward.
-- Arms slightly away from the body.
-- Center the person in the frame.
-- Leave balanced empty space around the person.
+- Person standing upright, facing directly forward.
+- Arms relaxed and slightly away from body.
+- Feet visible.
+- Center the person in the image.
+- Leave generous empty space around the person.
+- Do not crop the head, feet, arms, or clothing.
+- Do not zoom in too much.
+- The person should occupy about 65–75% of the image height.
 
-BACKGROUND & LIGHTING:
-- Clean white or light neutral studio background.
+BACKGROUND:
+- Background must be plain white or very light gray.
+- Use a clean seamless studio background.
+- No room, no street, no runway, no mirror, no props.
+- No text, logos, watermark, furniture, or decorative elements.
+- Only a soft minimal floor shadow is allowed.
+
+LIGHTING:
 - Soft even lighting.
-- No props, no text, no logos, no watermark.
+- No harsh shadows.
+- No dramatic contrast.
+- No cinematic or editorial lighting.
 
 IMAGE QUALITY:
-- High-resolution, sharp, photorealistic.
-- No distortions, no artifacts.
-- No distorted hands, face, limbs, shoes, or accessories.
+- Photorealistic.
+- Clean and sharp.
+- No distorted face, hands, legs, shoes, or clothing.
+- No blur, artifacts, or extra limbs.
 
 COMPOSITION:
-- 4:3 aspect ratio.
-- Clean fashion catalog style.
+- Final image must be 4:3 aspect ratio.
+- Simple wardrobe app catalog thumbnail style.
+- Similar to a clean generated outfit card preview.
 
 OUTPUT:
-- Return ONLY one final image.
+- Return only one final image.
 - No text.
 - No explanation.
 - No multiple variations.
@@ -423,7 +468,7 @@ OUTPUT:
         {
           aspect_ratio: "4:3",
           crop: "fill",
-          gravity: "auto",
+          gravity: "center",
           width: 1600,
           height: 1200,
           quality: "auto:best",
@@ -444,6 +489,7 @@ OUTPUT:
 
       height,
       age,
+      comments,
 
       imageUrl: finalImageUrl,
       outfitImage: finalImageUrl,
@@ -464,6 +510,6 @@ OUTPUT:
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
