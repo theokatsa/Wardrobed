@@ -135,6 +135,10 @@ app.get("/", (req, res) => {
   res.send("Wardrobed API is running");
 });
 
+app.get("/generate-outfit", (req, res) => {
+  res.status(405).send("Use POST /generate-outfit");
+});
+
 app.post("/generate-outfit", async (req, res) => {
   try {
     console.log("\n\n========== NEW /generate-outfit REQUEST ==========");
