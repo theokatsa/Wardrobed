@@ -168,8 +168,7 @@ app.post("/generate-outfit", async (req, res) => {
     const ownerEmail = req.body.ownerEmail || req.body["Owner Email"];
 
     const height = req.body.height || req.body.Height;
-    const age = req.body.age || req.body.Age;
-
+    const age = req.body.age || req.body.Age || 30;
     const comments = req.body.comments || req.body.Comments;
 
     debugLog("PERSON DETAILS", {
@@ -206,7 +205,25 @@ app.post("/generate-outfit", async (req, res) => {
       accessoriesImage4: firstImageUrl(accessoriesImage4),
     };
 
+    const selectionState = {
+      hasModelPhoto: Boolean(extractedUrls.modelPhoto),
+      hasTop: Boolean(extractedUrls.topImage),
+      hasBottom: Boolean(extractedUrls.bottomImage),
+      hasShoes: Boolean(extractedUrls.shoesImage),
+      hasOuterwear: Boolean(extractedUrls.outerwearImage),
+      hasJumpsuit: Boolean(extractedUrls.jumpsuitImage),
+      hasDress: Boolean(extractedUrls.dressImage),
+      hasAccessories: Boolean(
+        extractedUrls.accessoriesImage ||
+          extractedUrls.accessoriesImage1 ||
+          extractedUrls.accessoriesImage2 ||
+          extractedUrls.accessoriesImage3 ||
+          extractedUrls.accessoriesImage4
+      ),
+    };
+
     debugLog("EXTRACTED IMAGE URLS", extractedUrls);
+    debugLog("SELECTION STATE", selectionState);
 
     const images = await Promise.all([
       imageUrlToBase64("modelPhoto", modelPhoto),
@@ -231,6 +248,7 @@ app.post("/generate-outfit", async (req, res) => {
       return res.status(400).json({
         error: "No valid image URLs were provided",
         extractedUrls,
+        selectionState,
         received: {
           modelPhoto,
           topImage,
@@ -264,6 +282,16 @@ PERSON DETAILS:
 - Age: ${age || "unknown"}
 - Height: ${height || "unknown"} cm
 
+SELECTION STATE:
+- ModelPhoto provided: ${selectionState.hasModelPhoto}
+- TopImage provided: ${selectionState.hasTop}
+- BottomImage provided: ${selectionState.hasBottom}
+- ShoesImage provided: ${selectionState.hasShoes}
+- OuterwearImage provided: ${selectionState.hasOuterwear}
+- JumpsuitImage provided: ${selectionState.hasJumpsuit}
+- DressImage provided: ${selectionState.hasDress}
+- Accessories provided: ${selectionState.hasAccessories}
+
 USER STYLING INSTRUCTIONS:
 ${comments || "None"}
 
@@ -282,13 +310,18 @@ IMPORTANT PRIORITY:
 - Do NOT ignore age or height even if ModelPhoto suggests otherwise.
 
 INPUT ORDER:
-- Image 1: ModelPhoto/person
+- Image 1: ModelPhoto/person.
 - Image 2+: Clothing items in this exact order:
   TopImage, BottomImage, ShoesImage,
   OuterwearImage,
   JumpsuitImage,
   DressImage,
-  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4
+  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4.
+
+CRITICAL IMAGE AVAILABILITY RULE:
+- Only use an image category if SELECTION STATE says it was provided.
+- If SELECTION STATE says a category is false, treat that clothing item as missing.
+- Do not assume an item exists just because it appears in the input order text.
 
 IDENTITY:
 - Preserve the person's facial identity, skin tone, hair, and likeness.
@@ -309,12 +342,12 @@ CLOTHING APPLICATION STRICT CONTROL:
 - Never invent clothing beyond these rules.
 
 MAPPING:
-- TopImage goes on the torso.
-- BottomImage goes on the legs.
-- ShoesImage goes on the feet.
-- OuterwearImage is layered over the outfit only if provided.
-- JumpsuitImage is a full-body garment covering torso and legs.
-- DressImage is a full-body garment covering torso and legs.
+- If TopImage is provided, it goes on the torso.
+- If BottomImage is provided, it goes on the legs.
+- If ShoesImage is provided, it goes on the feet.
+- If OuterwearImage is provided, it is layered over the outfit.
+- If JumpsuitImage is provided, it is a full-body garment covering torso and legs.
+- If DressImage is provided, it is a full-body garment covering torso and legs.
 - AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 are accessories only if provided.
 
 FULL-BODY GARMENT PRIORITY:
@@ -497,20 +530,16 @@ OUTPUT:
 
     return res.json({
       rowId,
-
       OutfitName: outfitName,
       outfitName,
-
       ownerEmail,
-
       height,
       age,
       comments,
-
       imageUrl: finalImageUrl,
       outfitImage: finalImageUrl,
       OutfitImage: finalImageUrl,
-
+      debugSelection: selectionState,
       status: "success",
     });
   } catch (err) {
