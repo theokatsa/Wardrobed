@@ -25,7 +25,9 @@ function debugLog(label, value) {
 function firstImageUrl(value) {
   if (!value) return null;
 
-  if (Array.isArray(value)) return firstImageUrl(value[0]);
+  if (Array.isArray(value)) {
+    return firstImageUrl(value[0]);
+  }
 
   if (typeof value === "string") {
     return (
@@ -169,12 +171,10 @@ app.post("/generate-outfit", async (req, res) => {
 
     const height = req.body.height || req.body.Height;
     const age = req.body.age || req.body.Age;
-    const comments = req.body.comments || req.body.Comments;
 
     debugLog("PERSON DETAILS", {
       height,
       age,
-      comments,
     });
 
     debugLog("ENV CHECK", {
@@ -245,7 +245,6 @@ app.post("/generate-outfit", async (req, res) => {
           accessoriesImage4,
           height,
           age,
-          comments,
         },
       });
     }
@@ -263,25 +262,19 @@ PERSON DETAILS:
 - Age: ${age || "unknown"}
 - Height: ${height || "unknown"} cm
 
-USER COMMENTS / STYLING NOTES:
-${comments || "None"}
-
-COMMENTS RULES:
-- Use the comments only for styling guidance.
-- Comments may affect fit or wear style, such as tucked, untucked, oversized, relaxed, sleeves rolled, or similar styling.
-- Comments must NOT add new clothing items.
-- Comments must NOT remove selected clothing items.
-- Comments must NOT change the color, design, or category of selected clothing.
-- If comments conflict with the clothing rules, ignore the conflicting part.
+IMPORTANT PRIORITY:
+- The generated person MUST clearly reflect the provided age and height.
+- Differences in age and height should be visually noticeable.
+- Do NOT ignore age or height even if ModelPhoto suggests otherwise.
 
 INPUT ORDER:
-- Image 1: ModelPhoto/person
+- Image 1: ModelPhoto (person)
 - Image 2+: Clothing items in this order:
   TopImage, BottomImage, ShoesImage,
-  OuterwearImage,
-  JumpsuitImage,
-  DressImage,
-  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4
+  OuterwearImage (optional),
+  JumpsuitImage (optional),
+  DressImage (optional),
+  AccessoriesImage, AccessoriesImage1, AccessoriesImage2, AccessoriesImage3, AccessoriesImage4 (optional)
 
 IDENTITY:
 - Preserve the person's facial identity, skin tone, hair, and likeness.
@@ -293,73 +286,40 @@ IDENTITY:
 AGE & HEIGHT REALISM:
 - The person should look like a realistic ${age || "unknown"}-year-old human.
 - The body proportions must match a real person of ${height || "unknown"} cm height.
+- Height should affect leg length, torso-to-leg ratio, and overall silhouette.
+- Age should affect facial maturity, skin texture, subtle posture, and presence.
 - Keep proportions natural and realistic.
 
 CLOTHING APPLICATION:
 - Apply ONLY the provided clothing items.
-- Do NOT invent extra clothing.
-- Do NOT add extra styling pieces.
-- Do NOT add accessories unless an accessory image is provided.
-- Do NOT change the design or color of the selected clothing.
-
-MAPPING:
-- TopImage → torso
-- BottomImage → legs
-- ShoesImage → feet
-- OuterwearImage → layered over the outfit, if provided
-- JumpsuitImage → full-body garment covering torso and legs
-- DressImage → full-body garment covering torso and legs
-- AccessoriesImage → appropriate accessory placement
-- AccessoriesImage1 → appropriate accessory placement
-- AccessoriesImage2 → appropriate accessory placement
-- AccessoriesImage3 → appropriate accessory placement
-- AccessoriesImage4 → appropriate accessory placement
+- Map each item correctly:
+  TopImage → torso
+  BottomImage → legs
+  ShoesImage → feet
+  OuterwearImage → layered over the outfit, if present
+  JumpsuitImage → full body garment covering torso and legs
+  DressImage → full body garment covering torso and legs
+  AccessoriesImage → appropriate accessory placement
+  AccessoriesImage1 → appropriate accessory placement
+  AccessoriesImage2 → appropriate accessory placement
+  AccessoriesImage3 → appropriate accessory placement
+  AccessoriesImage4 → appropriate accessory placement
 
 FULL-BODY GARMENT RULES:
-- If JumpsuitImage is provided, use it as the main outfit.
-- If JumpsuitImage is provided, do NOT use TopImage or BottomImage.
-- If JumpsuitImage is provided, do NOT add fallback top or fallback bottom.
-- If DressImage is provided, use it as the main outfit.
-- If DressImage is provided, do NOT use TopImage or BottomImage.
-- If DressImage is provided, do NOT add fallback top or fallback bottom.
-- If both JumpsuitImage and DressImage are provided, use only one of them.
-- Do NOT combine a dress with pants unless the provided dress image clearly shows that styling.
+- If JumpsuitImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
+- If DressImage is provided, use it as the main outfit and do NOT use TopImage or BottomImage.
+- If both JumpsuitImage and DressImage are provided, use only the one that appears most complete and realistic for the outfit.
+- Do NOT layer a dress over pants unless the provided clothing clearly shows that styling.
 - Do NOT combine a jumpsuit with separate top or bottom pieces.
-- Outerwear may be layered over a dress or jumpsuit only if OuterwearImage is provided.
-
-MISSING ITEM FALLBACK RULES:
-- Fallback clothing is allowed only to complete an incomplete outfit.
-- Fallback clothing must be plain black, minimal, fitted, neutral, and without logos.
-
-Use these exact fallback rules:
-- If TopImage is provided and BottomImage is missing:
-  add simple plain black fitted pants.
-- If BottomImage is provided and TopImage is missing:
-  add simple plain black fitted t-shirt.
-- If ShoesImage is missing:
-  add simple plain black sneakers.
-- If TopImage and BottomImage are both missing, and no DressImage or JumpsuitImage is provided:
-  add simple plain black fitted t-shirt and simple plain black fitted pants.
-- If DressImage is provided:
-  do NOT add fallback top or fallback bottom.
-  Only add simple plain black sneakers if ShoesImage is missing.
-- If JumpsuitImage is provided:
-  do NOT add fallback top or fallback bottom.
-  Only add simple plain black sneakers if ShoesImage is missing.
-
-STRICT PROHIBITIONS:
-- Do NOT add jackets, coats, shirts, pants, skirts, dresses, bags, hats, jewelry, glasses, scarves, belts, or accessories unless they are provided or explicitly allowed as fallback.
-- Do NOT add duplicate clothing.
-- Do NOT add logos or branding.
-- Do NOT change clothing colors.
-- Do NOT change clothing patterns.
-- Do NOT change clothing category.
+- Outerwear may still be layered over a jumpsuit or dress if provided.
+- Shoes and accessories should still be applied normally.
 
 FIT & REALISM:
-- Clothing must align naturally with the body.
-- Ensure correct scale, folds, perspective, shadows, and fabric behavior.
-- Ensure realistic layering and contact with the body.
-- Accessories must be realistic in scale and placement.
+- Clothing must align naturally with the adjusted body.
+- Ensure clothing scale matches the updated proportions.
+- Maintain realistic folds, shadows, and fabric behavior.
+- Accessories must be correctly scaled.
+- Ensure proper layering and realistic contact between garments and body.
 
 POSE & FRAMING:
 - Full-body view from head to toe.
@@ -369,26 +329,18 @@ POSE & FRAMING:
 - Leave balanced empty space around the person.
 
 BACKGROUND & LIGHTING:
-- Background MUST be pure white or very close to pure white.
-- Use a clean white studio background.
-- No colored background.
-- No gradient background.
-- No textured background.
-- No outdoor, room, closet, mirror, runway, store, or lifestyle environment.
-- No props, no furniture, no extra objects.
-- No text, no logos, no watermark.
-- Soft even studio lighting.
-- Only a minimal natural shadow under the feet is allowed.
+- Clean white or light neutral studio background.
+- Soft even lighting.
+- No props, no text, no logos, no watermark.
 
 IMAGE QUALITY:
-- Generate a crisp, clean, photorealistic image.
-- No pixelation, no blur, no compression artifacts.
+- High-resolution, sharp, photorealistic.
+- No distortions, no artifacts.
 - No distorted hands, face, limbs, shoes, or accessories.
-- High-resolution fashion catalog quality.
 
 COMPOSITION:
-- Final image must be 4:3 aspect ratio.
-- Clean product-style fashion try-on composition.
+- 4:3 aspect ratio.
+- Clean fashion catalog style.
 
 OUTPUT:
 - Return ONLY one final image.
@@ -488,7 +440,6 @@ OUTPUT:
 
       height,
       age,
-      comments,
 
       imageUrl: finalImageUrl,
       outfitImage: finalImageUrl,
